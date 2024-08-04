@@ -8,15 +8,15 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install package
-      run: |
-        sudo apt-get update -y; sudo apt-get install -y libmpv-dev
-      if: runner.os == 'Linux'
-    - name: Build
-      run: go build ./...
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install package
+        run: |
+          sudo apt-get update -y; sudo apt-get install -y libmpv-dev
+        if: runner.os == 'Linux'
+      - name: Build
+        run: go build ./...
