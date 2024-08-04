@@ -62,16 +62,26 @@ func (m *Mpv) Initialize() error {
 	return NewError(C.mpv_initialize(m.handle))
 }
 
-// Command runs the specified command, returning an error if somethin goes wrong.
+// Command runs the specified command, returning an error if something goes wrong.
 func (m *Mpv) Command(command []string) error {
 	arr := C.makeCharArray(C.int(len(command) + 1))
 	if arr == nil {
 		return ERROR_NOMEM
 	}
 	defer C.free(unsafe.Pointer(arr))
+
+	cStrings := make([]*C.char, len(command))
 	for i, s := range command {
-		C.setStringArray(arr, C.int(i), C.CString(s))
+		val := C.CString(s)
+		cStrings[i] = val
+		C.setStringArray(arr, C.int(i), val)
 	}
+
+	defer func() {
+		for _, cStr := range cStrings {
+			C.free(unsafe.Pointer(cStr))
+		}
+	}()
 
 	return NewError(C.mpv_command(m.handle, arr))
 }
@@ -93,7 +103,9 @@ func (m *Mpv) LoadConfigFile(fn string) error {
 
 // SetProperty sets the client property according to the given format.
 func (m *Mpv) SetProperty(name string, format Format, data interface{}) error {
-	return NewError(C.mpv_set_property(m.handle, C.CString(name), C.mpv_format(format), convertData(format, data)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	return NewError(C.mpv_set_property(m.handle, cName, C.mpv_format(format), convertData(format, data)))
 }
 
 // GetProperty returns the value of the property according to the given format.

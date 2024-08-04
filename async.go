@@ -29,9 +29,20 @@ func (m *Mpv) CommandAsync(replyUserdata uint64, command []string) error {
 		return ERROR_NOMEM
 	}
 	defer C.free(unsafe.Pointer(arr))
+
+	cStrings := make([]*C.char, len(command))
 	for i, s := range command {
-		C.setStringArray(arr, C.int(i), C.CString(s))
+		val := C.CString(s)
+		cStrings[i] = val
+		C.setStringArray(arr, C.int(i), val)
 	}
+
+	defer func() {
+		for _, cStr := range cStrings {
+			C.free(unsafe.Pointer(cStr))
+		}
+	}()
+
 	return NewError(C.mpv_command_async(m.handle, C.uint64_t(replyUserdata), arr))
 }
 
