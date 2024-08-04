@@ -6,7 +6,6 @@ package mpv
 #cgo linux pkg-config: mpv
 #cgo windows pkg-config: --static mpv
 #cgo darwin pkg-config: mpv
-#cgo darwin LDFLAGS: -lmpv
 
 char** makeCharArray(int size) {
     return calloc(sizeof(char*), size);
