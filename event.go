@@ -51,6 +51,9 @@ type Event struct {
 
 // Message .
 func (e *Event) Message() string {
+	if e.Data == nil {
+		return ""
+	}
 	logMsgEvent := (*C.struct_mpv_event_log_message)(e.Data)
 	if logMsgEvent == nil {
 		return ""

@@ -14,12 +14,22 @@ import (
 
 // SetPropertyAsync .
 func (m *Mpv) SetPropertyAsync(name string, replyUserdata uint64, format Format, data interface{}) error {
-	return NewError(C.mpv_set_property_async(m.handle, C.uint64_t(replyUserdata), C.CString(name), C.mpv_format(format), convertData(format, data)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	dataPtr, freeData := convertData(format, data)
+	if freeData != nil {
+		defer freeData()
+	}
+
+	return NewError(C.mpv_set_property_async(m.handle, C.uint64_t(replyUserdata), cName, C.mpv_format(format), dataPtr))
 }
 
 // GetPropertyAsync .
 func (m *Mpv) GetPropertyAsync(name string, replyUserdata uint64, format Format) error {
-	return NewError(C.mpv_get_property_async(m.handle, C.uint64_t(replyUserdata), C.CString(name), C.mpv_format(format)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	return NewError(C.mpv_get_property_async(m.handle, C.uint64_t(replyUserdata), cName, C.mpv_format(format)))
 }
 
 // CommandAsync .

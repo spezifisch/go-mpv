@@ -18,6 +18,7 @@ void setStringArray(char** a, int i, char* s) {
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 )
 
@@ -83,7 +84,10 @@ func (m *Mpv) Command(command []string) error {
 		}
 	}()
 
-	return NewError(C.mpv_command(m.handle, arr))
+	if err := NewError(C.mpv_command(m.handle, arr)); err != nil {
+		return fmt.Errorf("failed to execute command %v: %w", command, err)
+	}
+	return nil
 }
 
 // CommandString runs the given command string, this string is parsed internally by mpv.
@@ -105,7 +109,13 @@ func (m *Mpv) LoadConfigFile(fn string) error {
 func (m *Mpv) SetProperty(name string, format Format, data interface{}) error {
 	cName := C.CString(name)
 	defer C.free(unsafe.Pointer(cName))
-	return NewError(C.mpv_set_property(m.handle, cName, C.mpv_format(format), convertData(format, data)))
+
+	dataPtr, freeData := convertData(format, data)
+	if freeData != nil {
+		defer freeData()
+	}
+
+	return NewError(C.mpv_set_property(m.handle, cName, C.mpv_format(format), dataPtr))
 }
 
 // GetProperty returns the value of the property according to the given format.
@@ -216,7 +226,15 @@ func (m *Mpv) UnobserveProperty(replyUserdata uint64) error {
 
 // SetOption sets the given option according to the given format.
 func (m *Mpv) SetOption(name string, format Format, data interface{}) error {
-	return NewError(C.mpv_set_option(m.handle, C.CString(name), C.mpv_format(format), convertData(format, data)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	dataPtr, freeData := convertData(format, data)
+	if freeData != nil {
+		defer freeData()
+	}
+
+	return NewError(C.mpv_set_option(m.handle, cName, C.mpv_format(format), dataPtr))
 }
 
 // SetOptionString sets the option to the given string.
@@ -269,38 +287,40 @@ func (m *Mpv) TerminateDestroy() {
 
 // convertData converts the data according to the given format and returns an unsafe.Pointer
 // for use in SetOption and SetProperty.
-func convertData(format Format, data interface{}) unsafe.Pointer {
+// Note: If conversion lead to a memory allocation, you need to defer call the returned function.
+func convertData(format Format, data interface{}) (unsafe.Pointer, func()) {
 	switch format {
 	case FORMAT_NONE:
-		return nil
+		return nil, nil
 	case FORMAT_STRING, FORMAT_OSD_STRING:
-		return unsafe.Pointer(&[]byte(data.(string))[0])
+		str := C.CString(data.(string))
+		return unsafe.Pointer(str), func() { C.free(unsafe.Pointer(str)) }
 	case FORMAT_FLAG:
-		var val int
+		var val C.int
 		if data.(bool) {
 			val = 1
 		} else {
 			val = 0
 		}
-		return unsafe.Pointer(&val)
+		return unsafe.Pointer(&val), nil
 	case FORMAT_INT64:
 		i, ok := data.(int64)
 		if !ok {
 			i = int64(data.(int))
 		}
 		val := C.int64_t(i)
-		return unsafe.Pointer(&val)
+		return unsafe.Pointer(&val), nil
 	case FORMAT_DOUBLE:
 		val := C.double(data.(float64))
-		return unsafe.Pointer(&val)
+		return unsafe.Pointer(&val), nil
 	case FORMAT_NODE:
 		node := data.(*Node)
-		return unsafe.Pointer(node.CNode())
+		return unsafe.Pointer(node.CNode()), nil
 	case FORMAT_NODE_MAP:
-		return unsafe.Pointer(CNodeMap(data.(map[string]*Node)))
+		return unsafe.Pointer(CNodeMap(data.(map[string]*Node))), nil
 	case FORMAT_NODE_ARRAY:
-		return unsafe.Pointer(CNodeList(data.([]*Node)))
+		return unsafe.Pointer(CNodeList(data.([]*Node))), nil
 	default:
-		return nil
+		return nil, nil
 	}
 }

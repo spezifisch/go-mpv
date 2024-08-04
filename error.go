@@ -34,15 +34,15 @@ const (
 	ERROR_NOT_IMPLEMENTED      Error = C.MPV_ERROR_NOT_IMPLEMENTED
 )
 
-// NewError turns an integer value into an error type.
+// NewError turns an integer value into an error type with context.
 func NewError(err C.int) error {
 	if err == C.MPV_ERROR_SUCCESS {
 		return nil
 	}
-	return Error(err)
+	return fmt.Errorf("mpv error %d: %w", int(err), Error(err))
 }
 
-// Error .
+// Error method provides a string representation of the Error type.
 func (e Error) Error() string {
 	return fmt.Sprintf("MPV_ERROR %d %s", int(e), C.GoString(C.mpv_error_string(C.int(e))))
 }
