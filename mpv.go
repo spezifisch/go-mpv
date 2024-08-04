@@ -4,7 +4,7 @@ package mpv
 #include <mpv/client.h>
 #include <stdlib.h>
 #cgo linux pkg-config: mpv
-#cgo windows pkg-config: --static mpv
+#cgo windows || darwin pkg-config: --static mpv
 #cgo darwin LDFLAGS: -lmpv
 
 char** makeCharArray(int size) {
