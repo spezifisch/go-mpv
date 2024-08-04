@@ -187,25 +187,33 @@ func (m *Mpv) GetProperty(name string, format Format) (interface{}, error) {
 
 // SetPropertyString sets the property to the given string.
 func (m *Mpv) SetPropertyString(name, value string) error {
-	return NewError(C.mpv_set_property_string(m.handle, C.CString(name), C.CString(value)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+	return NewError(C.mpv_set_property_string(m.handle, cName, cValue))
 }
 
 // GetPropertyString returns the value of the property as a string. If the property is empty,
 // an empty string is returned.
 func (m *Mpv) GetPropertyString(name string) string {
-	str := C.mpv_get_property_string(m.handle, C.CString(name))
-	defer C.mpv_free(unsafe.Pointer(str))
-	if str != nil {
-		return C.GoString(str)
-	} else {
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+
+	str := C.mpv_get_property_string(m.handle, cName)
+	if str == nil {
 		return ""
 	}
+	defer C.mpv_free(unsafe.Pointer(str))
+	return C.GoString(str)
 }
 
 // GetPropertyOsdString returns the value of the property as a string formatted for mpv's
 // on-screen display.
 func (m *Mpv) GetPropertyOsdString(name string) string {
-	str := C.mpv_get_property_osd_string(m.handle, C.CString(name))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	str := C.mpv_get_property_osd_string(m.handle, cName)
 	defer C.mpv_free(unsafe.Pointer(str))
 	if str != nil {
 		return C.GoString(str)
@@ -216,7 +224,9 @@ func (m *Mpv) GetPropertyOsdString(name string) string {
 
 // ObserveProperty .
 func (m *Mpv) ObserveProperty(replyUserdata uint64, name string, format Format) error {
-	return NewError(C.mpv_observe_property(m.handle, C.uint64_t(replyUserdata), C.CString(name), C.mpv_format(format)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	return NewError(C.mpv_observe_property(m.handle, C.uint64_t(replyUserdata), cName, C.mpv_format(format)))
 }
 
 // UnobserveProperty .
@@ -239,7 +249,11 @@ func (m *Mpv) SetOption(name string, format Format, data interface{}) error {
 
 // SetOptionString sets the option to the given string.
 func (m *Mpv) SetOptionString(name, value string) error {
-	return NewError(C.mpv_set_option_string(m.handle, C.CString(name), C.CString(value)))
+	cName := C.CString(name)
+	defer C.free(unsafe.Pointer(cName))
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+	return NewError(C.mpv_set_option_string(m.handle, cName, cValue))
 }
 
 // WaitEvent calls mpv_wait_event and returns the result as an Event struct.
@@ -267,7 +281,9 @@ func (m *Mpv) RequestEvent(event EventId, enable bool) error {
 
 // RequestLogMessages .
 func (m *Mpv) RequestLogMessages(level string) error {
-	return NewError(C.mpv_request_log_messages(m.handle, C.CString(level)))
+	cLevel := C.CString(level)
+	defer C.free(unsafe.Pointer(cLevel))
+	return NewError(C.mpv_request_log_messages(m.handle, cLevel))
 }
 
 // Wakeup .
